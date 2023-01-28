@@ -17,15 +17,15 @@ mydb_Create_Table_Query = """CREATE TABLE audio
   CONSTRAINT audio_pk PRIMARY KEY (trackid)
 )"""
 # create a table for storing the details of users 
-mydb_Create_Table_Query= """CREATE TABLE user
+mydb_Create_Table_Query = """CREATE TABLE user
 (
   userid int(100) not null auto_increment,
-  email varchar(50) not null,
+  fullname varchar(50) not null,
   username varchar(50) not null,
   password varchar(50) not null,
   usertype varchar(50) not null,
   CONSTRAINT user_pk PRIMARY KEY (userid)
-  
+
    )"""
 #create cursor 
 cursor = mydb.cursor()
