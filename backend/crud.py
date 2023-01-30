@@ -1,9 +1,12 @@
+from distutils.log import error
+import errno
 import jwt
 import pymysql
 from config import mydb
 from flask import jsonify
 from flask import request
 from app import app
+from db_services import execute,closeConnection,commitConnection
 # create a class Category which have the details of categories of songs
 class Category:
     def __init__(self, categoryid: str, category: str):
@@ -24,19 +27,17 @@ class Role:
         self.roleid = roleid
         self.role = role
 # insert categories of audios to category table
-@app.route('/insert_category', methods=['POST'])
+@app.route('/category', methods=['POST'])
 def addCategory(categoryid=None):
     try:
         json = request.json
         category = json['category']
         categoryobj = Category(categoryid, category)
         if category and request.method == 'POST' :
-            conn = mydb.connect()
-            cursor = conn.cursor(pymysql.cursors.DictCursor)
             sqlQuery = "INSERT INTO category(category) VALUES( %s)"
             bindData = categoryobj.category
-            cursor.execute(sqlQuery, bindData)
-            conn.commit()
+            execute(sqlQuery,bindData)
+            commitConnection()
             response = jsonify('Category is added successfully')
             response.status_code = 200
             return response
@@ -45,28 +46,24 @@ def addCategory(categoryid=None):
     except Exception as e:
         print(e)
         return 'exception'
-    finally:
-        cursor.close()
-        conn.close()
 # delete a particular category from category table
-@app.route('/delete_category/<categoryid>', methods=['DELETE'])
+@app.route('/category/<categoryid>', methods=['DELETE'])
 def deleteCategory(categoryid, category=None):
     try:
         categoryobj = Category(categoryid, category)
-        conn = mydb.connect()
-        cursor = conn.cursor(pymysql.cursors.DictCursor)
         sqlQuery = "SELECT category FROM category WHERE categoryid =%s"
         bindData = categoryobj.categoryid
-        data = cursor.execute(sqlQuery, bindData)
+        data = execute(sqlQuery, bindData)
         print(data)
         if data == 0:
+            commitConnection()
             response = jsonify('Category does not exist')
             return response
         elif data == 1:
             sqlQuery = "DELETE FROM category WHERE categoryid =%s"
             bindData = categoryobj.categoryid
-            cursor.execute(sqlQuery, bindData)
-            conn.commit()
+            execute(sqlQuery,bindData)
+            commitConnection()
             respone = jsonify('this category deleted successfully!')
             respone.status_code = 200
             return respone
@@ -74,7 +71,7 @@ def deleteCategory(categoryid, category=None):
             print(e)
 
 # insert audio details into audio table
-@app.route('/insert_audio', methods=['POST'])
+@app.route('/audio', methods=['POST'])
 def createAudio(trackid=None):
     try:
         json = request.json
@@ -86,49 +83,48 @@ def createAudio(trackid=None):
         image = json['image']
         audio = Audio(trackid, title, artist, category, album, image)
         if title and artist and category and album and image and request.method == 'POST':
-            conn = mydb.connect()
-            cursor = conn.cursor(pymysql.cursors.DictCursor)
             sqlQuery = "INSERT INTO audio(title, artist, category, album, image) VALUES( %s, %s, %s,%s,%s)"
             bindData = (audio.title, audio.artist, audio.category, audio.album, audio.image)
-            cursor.execute(sqlQuery, bindData)
-            conn.commit()
+            execute(sqlQuery, bindData)
+            commitConnection()
             response = jsonify('Audio added successfully!')
             response.status_code = 200
             return response
-        else:
+        else:   
             return showMessage()
-    except Exception as e:
-        print(e)
-        return 'Exception'
-    finally:
-        cursor.close()
-        conn.close()
+    except KeyError as e:
+        return jsonify('key error, one value is missing')
+    except Exception as e :
+        return jsonify('something went wrong..!!')
+        
+        
+        # return handleError(e)
 # delete audio from table audio
-@app.route('/delete_audio/<trackid>', methods=['DELETE'])
+@app.route('/audio/<trackid>', methods=['DELETE'])
 def deleteAudio(trackid, title=None, artist=None,  category=None, album=None, image=None):
     try:
         audio = Audio(trackid, title, artist, category, album, image)
-        conn = mydb.connect()
-        cursor = conn.cursor(pymysql.cursors.DictCursor)
         sqlQuery = "SELECT title FROM audio WHERE trackid =%s"
         bindData = audio.trackid
-        data = cursor.execute(sqlQuery, bindData)
+        data = execute(sqlQuery, bindData)
         print(data)
         if data == 0:
+            commitConnection()
             response = jsonify('Audio does not exist')
             return response
         elif data == 1:
             sqlQuery = "DELETE FROM audio WHERE trackid =%s"
             bindData = audio.trackid
-            cursor.execute(sqlQuery, bindData)
-            conn.commit()
+            data = execute(sqlQuery, bindData)
+            print(data)
+            commitConnection()
             respone = jsonify('this audio deleted successfully!')
             respone.status_code = 200
             return respone
     except Exception as e:
             print(e)
-# update audio from audio table
-@app.route('/update_audio/<trackid>', methods=['PUT'])
+# updae audio from audio table
+@app.route('/audio/<trackid>', methods=['PUT'])
 def updateAudio(trackid):
     try:
         _json = request.json
@@ -144,43 +140,42 @@ def updateAudio(trackid):
         if new_title and new_artist and new_category and new_album and new_image and request.method == 'PUT':
             query = "SELECT title FROM audio WHERE trackid=%s"
             bindData = audio.trackid
-            conn = mydb.connect()
-            cursor = conn.cursor(pymysql.cursors.DictCursor)
-            data = cursor.execute(query, bindData)
+            data = execute(query, bindData)
             if data == 0:
+                commitConnection()
                 response = jsonify('Audio does not exist')
                 return response
             elif data == 1:
                 sqlQuery = " UPDATE audio SET title= %s, artist= %s, category= %s, album= %s, image=%s  WHERE trackid=%s "
                 bindData = (audio.title, audio.artist, audio.category, audio.album, audio.image, audio.trackid)
-                conn = mydb.connect()
-                cursor = conn.cursor()
-                cursor.execute(sqlQuery, bindData)
-                conn.commit()
+                execute(sqlQuery, bindData)
+                commitConnection()
                 respone = jsonify('Audio updated successfully!')
                 respone.status_code = 200
                 print(respone)
                 return respone
-            else:
-                return showMessage()
+        else:
+            return jsonify('One value is missing..  All fields are mandatory')
     except Exception as e:
         print(e)
 # view all audios from audio table
-@app.route('/view_audios', methods=['GET'])
+@app.route('/audio', methods=['GET'])
 def viewAudios():
     try:
         conn = mydb.connect()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute("SELECT audio.trackid, audio.title, audio.artist, category.category, audio.album, audio.image FROM audio JOIN category ON audio.category = category.categoryid;")
         empRows = cursor.fetchall()
-        conn.commit()
+        # conn.commit()
+        commitConnection()
         respone = jsonify(empRows)
         respone.status_code = 200
         return respone
     except Exception as e:
         print(e)
+        
 # view particular audio from audio table
-@app.route('/view_audio/<trackid>', methods=['GET'])
+@app.route('/audio/<trackid>', methods=['GET'])
 def audioDetails(trackid, title=None, artist=None, category=None, album=None, image=None):
     try:
         audio = Audio(trackid, title, artist, category, album, image)
@@ -196,24 +191,18 @@ def audioDetails(trackid, title=None, artist=None, category=None, album=None, im
         return respone
     except Exception as e:
         print(e)
-    finally:
-        cursor.close()
-        conn.close()
-
 # add values to role table
-@app.route('/add_role', methods=['POST'])
+@app.route('/role', methods=['POST'])
 def addRole(roleid=None):
     try:
         json = request.json
         role = json['role']
         roleobj = Role(roleid, role)
         if roleid and role and request.method == ['POST']:
-            conn = mydb.connect()
-            cursor = conn.cursor(pymysql.cursors.DictCursor)
             sqlQuery = "INSERT INTO role(role) VALUES( %s)"
             bindData = roleobj.role
-            cursor.execute(sqlQuery, bindData)
-            conn.commit()
+            execute(sqlQuery, bindData)
+            commitConnection()
             respone = jsonify('role added successfully!')
             respone.status_code = 200
             return respone
@@ -221,7 +210,7 @@ def addRole(roleid=None):
             return showMessage()
     except Exception as e:
         print(e)
-        return 'exception'
+        
 # error handling
 @app.errorhandler(404)
 def showMessage(error=None):
@@ -232,6 +221,10 @@ def showMessage(error=None):
     respone = jsonify(message)
     respone.status_code = 404
     return respone
+
+  
+#close the connection
+# closeConnection()
 # running the app
 if __name__ == "__main__":
     app.run()
