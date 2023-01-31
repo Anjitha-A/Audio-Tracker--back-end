@@ -33,8 +33,6 @@ mydb_Create_Table_Query = """CREATE TABLE role
     role varchar(50) not null,
     CONSTRAINT role_pk PRIMARY KEY (roleid)
  )"""
-
-
 # # create a table for storing the details of users
 mydb_Create_Table_Query = """CREATE TABLE user
 (
@@ -47,12 +45,10 @@ mydb_Create_Table_Query = """CREATE TABLE user
  )"""
 
 
-
-
 # # # create table for add ratings
 mydb_Create_Table_Query = """CREATE TABLE rating
 (
-    rateid int(100) not null auto_increment PRIMARY KEY,
+   rateid int(100) not null auto_increment,
     userid int(100) not null,
     trackid int(100) not null,
     rating int(100) not null,
