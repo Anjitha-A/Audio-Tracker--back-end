@@ -4,8 +4,11 @@ from flask import request
 from app import app
 import pymysql
 from config import mydb
-from db_services import execute,closeConnection,commitConnection
+from services.db_services import execute,closeConnection,commitConnection
+from services.jwt import tocken_required
+from services.logger import *
 @app.route('/add_role', methods=['POST'])
+@tocken_required
 def addRole(roleid=None):
     try:
         json = request.json
@@ -21,7 +24,12 @@ def addRole(roleid=None):
             response = jsonify('Category is added successfully')
             response.status_code = 200
             return response
-        else:
-            return "something went wrong"
+        
     except KeyError:
         return jsonify('key error, one value is missing')
+    except pymysql.IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        return jsonify('You are entering wrong category id , which is not in table..!!!')
+    except Exception as e :
+        return jsonify('something went wrong..!!')
+
