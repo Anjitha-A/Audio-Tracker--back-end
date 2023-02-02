@@ -49,3 +49,11 @@ def validateAudioData(title, artist, category , album, image):
     if not image:
         return jsonify({"error": "image is required"}), 400
     
+def validateRating(rating):
+    rate_value= int(rating)
+    if rate_value >5 :
+        return jsonify({"error":"rating value must be less than or equal to 5"})
+    if rate_value<1 :
+        return jsonify({"error":"rating value must be greater than or equal to 1"})
+   
+    
