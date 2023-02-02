@@ -4,10 +4,15 @@ from config import mydb
 from flask import jsonify
 from flask import request
 from app import app
-from db_services import execute,closeConnection,commitConnection
+from services.db_services import execute,closeConnection,commitConnection
 from validations import validateAudioData
+from services.jwt import tocken_required
+from services.logger import *
+
+
 # insert audio details into audio table
 @app.route('/audio', methods=['POST'])
+@tocken_required
 def createAudio(trackid=None):
     try:
         json = request.json
@@ -32,12 +37,17 @@ def createAudio(trackid=None):
         else:   
             return showMessage()
     except KeyError as e:
+        logger.error(f"KeyError: {e}")
         return jsonify('Some Columns are missing or Mispelled the Column name')
+    except pymysql.IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        return jsonify('You are entering wrong category id , which is not in table..!!!')
     except Exception as e :
         return jsonify('something went wrong..!!')
 
 # delete audio from table audio
 @app.route('/audio/<trackid>', methods=['DELETE'])
+@tocken_required
 def deleteAudio(trackid, title=None, artist=None,  category=None, album=None, image=None):
     try:
         # conn = mydb.connect()
@@ -64,8 +74,10 @@ def deleteAudio(trackid, title=None, artist=None,  category=None, album=None, im
             return respone
     except Exception as e:
             print(e)
+            return jsonify("error")
 # updae audio from audio table
 @app.route('/audio/<trackid>', methods=['PUT'])
+@tocken_required
 def updateAudio(trackid):
     try:
         _json = request.json
@@ -101,16 +113,23 @@ def updateAudio(trackid):
                 return respone
         else:
             return jsonify('something went wrong')
-    except KeyError:
+    except KeyError as e:
+        logger.error(f"KeyError: {e}")
         return jsonify('Some Columns are missing or Mispelled the Column name')
+    except pymysql.IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        return jsonify('You are entering wrong category id , which is not in table..!!!')
+    except Exception as e:
+        return jsonify('some error')
 # view all audios from audio table
 @app.route('/audio', methods=['GET'])
+@tocken_required
 def viewAudios():
-    try:
-        
+    try:   
         conn = mydb.connect()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
-        cursor.execute("SELECT audio.trackid, audio.title, audio.artist, category.category, audio.album, audio.image FROM audio JOIN category ON audio.category = category.categoryid;")
+      
+        cursor.execute("SELECT audio.trackid, audio.title, audio.artist, category.category, audio.album, audio.image , rating.rating FROM audio JOIN category ON audio.category = category.categoryid JOIN rating ON audio.trackid = rating.trackid;")
         empRows = cursor.fetchall()
         conn.commit()
         # commitConnection()
@@ -119,17 +138,22 @@ def viewAudios():
         return respone
     except Exception as e:
         print(e)
+        return jsonify("error")
         
 # view particular audio from audio table
 
 @app.route('/audio/<trackid>', methods=['GET'])
+@tocken_required
 def audioDetails(trackid, title=None, artist=None, category=None, album=None, image=None):
     try:
         audio = Audio(trackid, title, artist, category, album, image)
         print(audio.trackid)
         conn = mydb.connect()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
-        sqlQuery = "SELECT audio.trackid, audio.title, audio.artist, category.category, audio.album, audio.image FROM audio JOIN category ON audio.category = category.categoryid WHERE trackid= %s"
+        # query = "SELECT rating.rating FROM trackid=%s"
+        # bind = audio.trackid
+        # cursor.execute(query, bind)
+        sqlQuery = "SELECT audio.trackid, audio.title, audio.artist, category.category, audio.album, audio.image  FROM audio JOIN category ON audio.category = category.categoryid WHERE trackid= %s"
         bindData = audio.trackid
         cursor.execute(sqlQuery, bindData)
         empRow = cursor.fetchone()
@@ -138,6 +162,7 @@ def audioDetails(trackid, title=None, artist=None, category=None, album=None, im
         return respone
     except Exception as e:
         print(e)
+        return jsonify("error")
 
 # error handling
 @app.errorhandler(404)
