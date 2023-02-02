@@ -2,11 +2,15 @@ from models import Category
 from flask import jsonify
 from flask import request
 from app import app
-from db_services import execute,closeConnection,commitConnection
+from services.db_services import execute,closeConnection,commitConnection
+from services.jwt import tocken_required
+import pymysql
+from services.logger import *
 
         
 # insert categories of audios to category table
 @app.route('/category', methods=['POST'])
+@tocken_required
 def addCategory(categoryid=None):
     try:
         json = request.json
@@ -27,9 +31,15 @@ def addCategory(categoryid=None):
             return "something went wrong"
     except KeyError:
         return jsonify('One value is missing..  All fields are mandatory')
+    except pymysql.IntegrityError as e:
+        logger.error(f"IntegrityError: {e}")
+        return jsonify('You are entering wrong category id , which is not in table..!!!')
+    except Exception as e :
+        return jsonify('something went wrong..!!')
     
 # delete a particular category from category table
 @app.route('/category/<categoryid>', methods=['DELETE'])
+@tocken_required
 def deleteCategory(categoryid, category=None):
     try:
         # conn = mydb.connect()
