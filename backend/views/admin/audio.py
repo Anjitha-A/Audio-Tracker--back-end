@@ -1,7 +1,8 @@
+from turtle import title
 from models import Audio
 import pymysql
 from config import mydb
-from flask import jsonify
+from flask import jsonify, make_response
 from flask import request
 from app import app
 from services.db_services import execute,closeConnection,commitConnection
@@ -16,26 +17,26 @@ from services.logger import *
 def createAudio(trackid=None):
     try:
         json = request.json
-        print(json)
         title = json['title']
         artist = json['artist']
         category = json['category']
         album = json['album']
         image = json['image']
-        audio = Audio(trackid, title, artist, category, album, image)
-        if title and artist and category and album and image and request.method == 'POST':
-            # conn = mydb.connect()
-            # cursor = conn.cursor(pymysql.cursors.DictCursor)
-            sqlQuery = "INSERT INTO audio(title, artist, category, album, image) VALUES( %s, %s, %s,%s,%s)"
-            bindData = (audio.title, audio.artist, audio.category, audio.album, audio.image)
-            execute(sqlQuery, bindData)
-            # conn.commit()
-            commitConnection()
-            response = jsonify('Audio added successfully!')
-            response.status_code = 200
-            return response
-        else:   
-            return showMessage()
+        addAudio(trackid, title,artist, category, album, image)
+        # audio = Audio(trackid, title, artist, category, album, image)
+        # if title and artist and category and album and image and request.method == 'POST':
+        #     # conn = mydb.connect()
+        #     # cursor = conn.cursor(pymysql.cursors.DictCursor)
+        #     sqlQuery = "INSERT INTO audio(title, artist, category, album, image) VALUES( %s, %s, %s,%s,%s)"
+        #     bindData = (audio.title, audio.artist, audio.category, audio.album, audio.image)
+        #     execute(sqlQuery, bindData)
+        #     # conn.commit()
+        #     commitConnection()
+        #     response = jsonify('Audio added successfully!')
+        #     response.status_code = 200
+        #     return response
+        # else:   
+        #     return showMessage()
     except KeyError as e:
         logger.error(f"KeyError: {e}")
         return jsonify('Some Columns are missing or Mispelled the Column name')
@@ -44,6 +45,7 @@ def createAudio(trackid=None):
         return jsonify('You are entering wrong category id , which is not in table..!!!')
     except Exception as e :
         return jsonify('something went wrong..!!')
+    return jsonify({"message":"audio added successfully"})
 
 # delete audio from table audio
 @app.route('/audio/<trackid>', methods=['DELETE'])
@@ -153,7 +155,8 @@ def audioDetails(trackid, title=None, artist=None, category=None, album=None, im
         # query = "SELECT rating.rating FROM trackid=%s"
         # bind = audio.trackid
         # cursor.execute(query, bind)
-        sqlQuery = "SELECT audio.trackid, audio.title, audio.artist, category.category, audio.album, audio.image  FROM audio JOIN category ON audio.category = category.categoryid WHERE trackid= %s"
+        #sqlQuery = "SELECT audio.trackid, audio.title, audio.artist, category.category, audio.album, audio.image  FROM audio JOIN category ON audio.category = category.categoryid WHERE trackid= %s"
+        sqlQuery = "SELECT * FROM (SELECT audio.trackid,audio.title,audio.album, audio.image,audio.artist,category.category,  avg(rating.rating) from rating inner join audio on audio.trackid = rating.trackid inner join category on audio.category = category.categoryid group by audio.title,audio.category , audio.image,audio.album,audio.trackid) sub where trackid = %s";
         bindData = audio.trackid
         cursor.execute(sqlQuery, bindData)
         empRow = cursor.fetchone()
@@ -174,4 +177,35 @@ def showMessage(error=None):
     respone = jsonify(message)
     respone.status_code = 404
     return respone
+  
+
+
+
+  #for testing we are writting the code as seperate file
+def addAudio(trackid, title, artist, category, album, image):
+        if not title or not artist or not category or not album or not image:
+            response = make_response(jsonify({'message': 'All fields are required'}))
+            response.status_code = 400
+            return response
+        audio = Audio(trackid, title, artist, category, album, image)
+        if request.method == 'POST':
+            sqlQuery = "INSERT INTO audio(title, artist, category, album, image) VALUES( %s, %s, %s,%s,%s)"
+            bindData = (audio.title, audio.artist, audio.category, audio.album, audio.image)
+            try:
+                execute(sqlQuery, bindData)
+                commitConnection()
+                response = jsonify({'message': 'audio added successfully!'})
+                response.status_code = 200
+                return response
+            except pymysql.err.IntegrityError as e:
+                logger.error(f"IntegrityError: {e}")
+                return jsonify({'message': 'Audio already exists with the same name'})
+            
+        
+            
+
+
+
+
+
   
