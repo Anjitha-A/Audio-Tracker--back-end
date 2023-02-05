@@ -1,10 +1,10 @@
 from app import app
-from views.admin.audio import *
-from views.admin.role import *
-from views.admin.category import *
-from views.auth import *
-from views.user.rating import *
-from views.user.search import *
+from services.admin.audio import *
+from services.admin.role import *
+from services.admin.category import *
+from services.auth import *
+from services.user.rating import *
+from services.user.search import *
 from services.logger import *
 
 if __name__ == "__main__":  

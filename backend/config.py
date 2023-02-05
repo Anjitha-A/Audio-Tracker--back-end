@@ -9,5 +9,6 @@ app.config['MYSQL_DATABASE_DB'] = 'new_db'
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
 # jwt secret key for creating the jwt token
 app.config['JWT_SECRET_KEY'] = '4963cf9d82bb49849dfbd93bfb80bd88'
+app.config['CORS_HEADERS'] = 'Content-Type'
 mydb.init_app(app)
 jwt = JWTManager(app)

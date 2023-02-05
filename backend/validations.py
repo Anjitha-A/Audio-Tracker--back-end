@@ -56,4 +56,3 @@ def validateRating(rating):
     if rate_value<1 :
         return jsonify({"error":"rating value must be greater than or equal to 1"})
    
-    
